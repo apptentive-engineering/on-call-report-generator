@@ -1,57 +1,9 @@
-#!/usr/bin/env python3
-
-"""
-This will generate an on-call report based on information pulled from
-PagerDuty's API. The report will be generated in ConfluenceWiki format
-and will be posted to a target space/path in a target Confluence wiki.
-
-Usage: ./on-call.py SINCE_DAY UNTIL_DAY
-
-SINCE_DAY -- ISO 8601 date
-UNTIL_DAY -- ISO 8601 date
-
-i.e. ./on-call.py 2017-07-24 2017-07-31
-"""
+from helper import debug, ISO_8601_COMBINED_FORMAT, ISO_8601_DATE_FORMAT
+from settings import TIME_ZONE, UNTIL
 
 import datetime
 import dateutil.parser
-import os
-import pygerduty.v2
 import pytz
-import sys
-
-
-DEBUG       = True
-VERBOSITY   = 3
-INDENT_SIZE = 4
-
-PAGERDUTY_TOKEN = os.environ['PAGERDUTY_TOKEN']
-
-ISO_8601_DATE_FORMAT     = '%Y-%m-%d'
-ISO_8601_TIME_FORMAT     = '%H:%M:%S'
-ISO_8601_COMBINED_FORMAT = ISO_8601_DATE_FORMAT + 'T' + ISO_8601_TIME_FORMAT + '%z'
-
-TIME_ZONE = 'PST8PDT'               #: IANA time zone database format
-
-SINCE = sys.argv[1] + 'T09:30:00'   #: ISO 8601 combined datetime format
-UNTIL = sys.argv[2] + 'T09:29:59'   #: ISO 8601 combined datetime format
-
-START_OFF  = '17:30:00'             #: ISO 8601 extended time format
-END_OFF    = '08:30:00'             #: ISO 8601 extended time format
-START_PEAK = '00:00:00'             #: ISO 8601 extended time format
-END_PEAK   = '06:00:00'             #: ISO 8601 extended time format
-
-
-def debug(message='', verbosity=1):
-  """
-  Prints debug messages to stderr at varying verbosity levels
-
-  :param message: string -- debug message
-  :param verbosity: int -- verbosity level
-  """
-
-  if DEBUG and VERBOSITY >= verbosity:
-    sys.stderr.write((' ' * INDENT_SIZE * (verbosity - 1)) + message + '\n')
 
 
 def tz_aware(dt, tz):
@@ -156,71 +108,3 @@ def during(event_start, event_end, window_start, window_end, until=UNTIL, time_z
         window_end_dt = add_date_to_time(end_day, window_end)
 
         return window_start_dt < event_start < window_end_dt or window_start_dt < event_end < window_end_dt
-
-
-def total_incidents(incidents, type):
-  """
-  Gets total number of incidents of a certain type
-
-  :param incidents: dictionary - set of incidents to parse
-  :param type: string - key to parse within incidents
-  :return: int - total incidents
-  """
-
-  total = 0
-
-  for _, incident in incidents.items():
-    total += incident[type]
-
-  return total
-
-
-if __name__ == '__main__':
-  pager = pygerduty.v2.PagerDuty(PAGERDUTY_TOKEN)
-  debug('Connecting to PagerDuty...\n')
-
-  incidents = {}
-  for incident in pager.incidents.list(since=SINCE, until=UNTIL, time_zone=TIME_ZONE):
-    debug('New "' + incident.title + '" incident!')
-
-    if incident.title not in incidents:
-      incidents[incident.title] = {
-        'urgency': incident.urgency,
-        'total_duration': datetime.timedelta(),
-        'total_incidents': 0,
-        'off_hours': 0,
-        'peak_sleep': 0
-      }
-
-    incidents[incident.title]['total_duration'] += duration(incident)
-    debug('Total duration to ' + str(incidents[incident.title]['total_duration']), 2)
-
-    incidents[incident.title]['total_incidents'] += 1
-    debug('Total incidents to ' + str(incidents[incident.title]['total_incidents']), 2)
-
-    if incident.urgency != 'low':
-      debug('Checking if during off hours...', 2)
-      if during(dateutil.parser.parse(incident.created_at), end_datetime(incident, UNTIL), START_OFF, END_OFF):
-        incidents[incident.title]['off_hours'] += 1
-        debug('Occurred during off hours!', 3)
-
-      debug('Checking if during peak sleep...', 2)
-      if during(dateutil.parser.parse(incident.created_at), end_datetime(incident, UNTIL), START_PEAK, END_PEAK):
-        incidents[incident.title]['peak_sleep'] += 1
-        debug('Occurred during peak sleep!', 3)
-
-    debug()
-
-  debug()
-
-  for incident, metrics in incidents.items():
-    print(incident + ':')
-    print('            Urgency:', metrics['urgency'])
-    print('     Total Duration:', metrics['total_duration'])
-    print('    Total Incidents:', metrics['total_incidents'])
-    print('   Off Hours Alerts:', metrics['off_hours'])
-    print('  Peak Sleep Alerts:', metrics['peak_sleep'], '\n')
-
-  print('\n Total Off Hours Alerts:', total_incidents(incidents, 'off_hours'))
-  print('Total Peak Sleep Alerts:', total_incidents(incidents, 'peak_sleep'))
-
