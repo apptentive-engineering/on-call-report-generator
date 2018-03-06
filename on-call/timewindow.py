@@ -1,5 +1,5 @@
 from helper import debug, ISO_8601_COMBINED_FORMAT, ISO_8601_DATE_FORMAT
-from settings import TIME_ZONE, UNTIL
+from settings import END_OFF, END_PEAK, START_OFF, START_PEAK, TIME_ZONE, UNTIL
 
 import datetime
 import dateutil.parser
@@ -114,3 +114,27 @@ def during(event_start, event_end, window_start, window_end, until=UNTIL, time_z
 
                 return (window_start_dt < event_start < window_end_dt
                         or window_start_dt < event_end < window_end_dt)
+
+
+def during_off_hours(incident):
+    if incident.urgency != 'low':
+        debug('Checking if during off hours...', 2)
+        if during(dateutil.parser.parse(incident.created_at),
+                  end_datetime(incident, UNTIL),
+                  START_OFF, END_OFF):
+            debug('Occurred during off hours!', 3)
+            return True
+        else:
+            return False
+
+
+def during_peak_sleep(incident):
+    if incident.urgency != 'low':
+        debug('Checking if during peak sleep...', 2)
+        if during(dateutil.parser.parse(incident.created_at),
+                  end_datetime(incident, UNTIL),
+                  START_PEAK, END_PEAK):
+            debug('Occurred during peak sleep!', 3)
+            return True
+    else:
+        return False
