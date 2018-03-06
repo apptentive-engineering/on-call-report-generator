@@ -36,9 +36,8 @@ parser.add_argument('-f', '--format', default='stdout',
 args = parser.parse_args()
 
 
-DEBUG = (args.verbose > 0)
 VERBOSITY = args.verbose
-INDENT_SIZE = 4
+DEBUG_INDENT = 4
 TIME_ZONE = args.timezone
 START_OFF = args.start_off
 END_OFF = args.end_off
