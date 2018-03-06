@@ -13,6 +13,7 @@ UNTIL_DAY -- ISO 8601 date
 i.e. ./on-call.py 2017-07-24 2017-07-31
 """
 
+from collate import total_incidents
 from helper import debug
 from settings import (END_OFF, END_PEAK, PAGERDUTY_TOKEN, SINCE,
                       START_OFF, START_PEAK, TIME_ZONE, UNTIL)
@@ -21,23 +22,6 @@ from timewindow import duration, during, end_datetime
 import datetime
 import dateutil
 import pygerduty.v2
-
-
-def total_incidents(incidents, type):
-    """
-    Gets total number of incidents of a certain type
-
-    :param incidents: dictionary - set of incidents to parse
-    :param type: string - key to parse within incidents
-    :return: int - total incidents
-    """
-
-    total = 0
-
-    for _, incident in incidents.items():
-        total += incident[type]
-
-    return total
 
 
 if __name__ == '__main__':
