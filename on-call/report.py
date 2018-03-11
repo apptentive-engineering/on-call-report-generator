@@ -6,6 +6,12 @@ import pygerduty.v2
 
 
 def print_summary(incidents):
+    """
+    Prints a summary report of the given incident groups.
+
+    :param incidents: dictionary -- collection of incident groups
+    """
+
     for incident, metrics in incidents.items():
         print('''
 {incident}:
@@ -29,6 +35,11 @@ Total Peak Sleep Alerts: {total_peak}
 
 
 def report():
+    """
+    Connects to the PagerDuty API, collects incidents within the reporting window,
+    and prints a summary report of the incident collection.
+    """
+
     pager = pygerduty.v2.PagerDuty(PAGERDUTY_TOKEN)
     debug('Connecting to PagerDuty...\n')
     incidents = collate_incidents(pager)
